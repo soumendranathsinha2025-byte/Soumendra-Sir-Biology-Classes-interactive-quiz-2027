@@ -1,0 +1,1548 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Soumendra Sir Biology Classes - Live Assessment & Competition</title>
+  
+  <!-- Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          colors: {
+            bio: {
+              50: '#f0fdf4',
+              100: '#dcfce7',
+              500: '#22c55e',
+              600: '#16a34a',
+              700: '#15803d',
+              800: '#166534',
+              900: '#14532d',
+              950: '#052e16',
+            }
+          }
+        }
+      }
+    }
+  </script>
+
+  <!-- Google Font (Inter) -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+
+  <!-- React 18, ReactDOM, Babel & Lucide Icons -->
+  <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+  <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+  <script src="https://unpkg.com/lucide@latest"></script>
+
+  <style>
+    body {
+      font-family: 'Inter', sans-serif;
+      background-color: #0f172a;
+      color: #f8fafc;
+    }
+    .custom-scrollbar::-webkit-scrollbar {
+      width: 6px;
+      height: 6px;
+    }
+    .custom-scrollbar::-webkit-scrollbar-track {
+      background: #1e293b;
+      border-radius: 8px;
+    }
+    .custom-scrollbar::-webkit-scrollbar-thumb {
+      background: #334155;
+      border-radius: 8px;
+    }
+    .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+      background: #475569;
+    }
+    @keyframes pulse-ring {
+      0% { transform: scale(0.95); opacity: 0.8; }
+      50% { transform: scale(1.05); opacity: 1; }
+      100% { transform: scale(0.95); opacity: 0.8; }
+    }
+    .animate-pulse-ring {
+      animation: pulse-ring 2s infinite ease-in-out;
+    }
+  </style>
+</head>
+<body class="selection:bg-emerald-500 selection:text-slate-950">
+  <div id="root"></div>
+
+  <script type="text/babel">
+    const { useState, useEffect, useRef, useMemo } = React;
+
+    // --- Audio Feedback Synth using Web Audio API ---
+    const playSound = (type) => {
+      try {
+        const ctx = new (window.AudioContext || window.webkitAudioContext)();
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.connect(gain);
+        gain.connect(ctx.destination);
+
+        if (type === 'correct') {
+          osc.frequency.setValueAtTime(523.25, ctx.currentTime); // C5
+          osc.frequency.exponentialRampToValueAtTime(659.25, ctx.currentTime + 0.1); // E5
+          osc.frequency.exponentialRampToValueAtTime(783.99, ctx.currentTime + 0.2); // G5
+          gain.gain.setValueAtTime(0.15, ctx.currentTime);
+          gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.35);
+          osc.start();
+          osc.stop(ctx.currentTime + 0.35);
+        } else if (type === 'incorrect') {
+          osc.type = 'sawtooth';
+          osc.frequency.setValueAtTime(220, ctx.currentTime);
+          osc.frequency.exponentialRampToValueAtTime(150, ctx.currentTime + 0.2);
+          gain.gain.setValueAtTime(0.2, ctx.currentTime);
+          gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.3);
+          osc.start();
+          osc.stop(ctx.currentTime + 0.3);
+        } else if (type === 'rankup') {
+          osc.type = 'triangle';
+          osc.frequency.setValueAtTime(440, ctx.currentTime);
+          osc.frequency.exponentialRampToValueAtTime(880, ctx.currentTime + 0.25);
+          gain.gain.setValueAtTime(0.2, ctx.currentTime);
+          gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.4);
+          osc.start();
+          osc.stop(ctx.currentTime + 0.4);
+        }
+      } catch (e) {
+        console.log('Audio playback unavailable');
+      }
+    };
+
+    // --- Preset SVG Diagrams for Biology ---
+    const PRESET_DIAGRAMS = {
+      stomata: `data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 280" width="100%" height="100%"><rect width="400" height="280" fill="%23064e3b" rx="16"/><ellipse cx="200" cy="140" rx="130" ry="85" fill="%23047857" stroke="%2334d399" stroke-width="5"/><ellipse cx="200" cy="140" rx="35" ry="65" fill="%23022c22"/><path d="M 125 140 Q 200 70 275 140 Q 200 210 125 140 Z" fill="%2310b981" stroke="%236ee7b7" stroke-width="3"/><circle cx="150" cy="110" r="10" fill="%23064e3b"/><circle cx="250" cy="110" r="10" fill="%23064e3b"/><circle cx="160" cy="170" r="8" fill="%23064e3b"/><circle cx="240" cy="170" r="8" fill="%23064e3b"/><text x="200" y="38" font-family="sans-serif" font-size="15" font-weight="bold" fill="%23a7f3d0" text-anchor="middle">Structure of Stoma (Guard Cells &amp; Pore)</text><text x="200" y="145" font-family="sans-serif" font-size="12" font-weight="bold" fill="%23ffffff" text-anchor="middle">Stomatal Pore</text><text x="140" y="90" font-family="sans-serif" font-size="11" fill="%23d1fae5">Chloroplasts</text></svg>`,
+      heart: `data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 280" width="100%" height="100%"><rect width="400" height="280" fill="%23450a0a" rx="16"/><path d="M 200 240 C 130 185 85 130 110 75 C 130 35 180 45 200 90 C 220 45 270 35 290 75 C 315 130 270 185 200 240 Z" fill="%23f43f5e" stroke="%23fda4af" stroke-width="5"/><path d="M 200 90 L 200 235" stroke="%23881337" stroke-width="4" stroke-dasharray="4"/><path d="M 155 60 L 155 25 M 180 50 L 180 15 M 225 50 L 245 15" stroke="%2338bdf8" stroke-width="7" stroke-linecap="round"/><text x="200" y="32" font-family="sans-serif" font-size="15" font-weight="bold" fill="%23fecdd3" text-anchor="middle">Internal Anatomy of Human Heart</text><text x="145" y="130" font-family="sans-serif" font-size="12" font-weight="bold" fill="%23ffffff">Right Ventricle</text><text x="235" y="130" font-family="sans-serif" font-size="12" font-weight="bold" fill="%23ffffff">Left Ventricle</text></svg>`,
+      nephron: `data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 280" width="100%" height="100%"><rect width="400" height="280" fill="%230c4a6e" rx="16"/><circle cx="90" cy="95" r="32" fill="%23f59e0b" stroke="%23fde68a" stroke-width="4"/><circle cx="90" cy="95" r="18" fill="%23ef4444"/><path d="M 122 95 Q 175 95 175 150 T 235 190 T 295 130 L 295 250" fill="none" stroke="%2338bdf8" stroke-width="7" stroke-linecap="round"/><text x="200" y="35" font-family="sans-serif" font-size="15" font-weight="bold" fill="%23e0f2fe" text-anchor="middle">Functional Unit of Kidney: Nephron</text><text x="90" y="150" font-family="sans-serif" font-size="11" font-weight="bold" fill="%23fef3c7" text-anchor="middle">Bowman's Capsule</text><text x="305" y="200" font-family="sans-serif" font-size="11" font-weight="bold" fill="%23bae6fd">Collecting Duct</text></svg>`
+    };
+
+    // --- Pre-configured Sample Biology Questions for Classes 9, 10, 11, 12 ---
+    const INITIAL_QUESTIONS = [
+      {
+        id: 'q1',
+        classLevel: 'Class 10',
+        board: 'CBSE',
+        type: 'mcq',
+        text: 'Which organelle present in guard cells regulates stomatal movement by modifying turgor pressure during photosynthesis?',
+        diagramUrl: PRESET_DIAGRAMS.stomata,
+        options: ['Mitochondria', 'Chloroplast', 'Endoplasmic Reticulum', 'Golgi Apparatus'],
+        correctAnswerIndex: 1,
+        sampleAnswer: '',
+        positiveMarks: 4,
+        negativeMarks: -1,
+        timeLimit: 30,
+        explanation: 'Chloroplasts synthesize sugars during daylight, increasing osmotic concentration in guard cells, causing water entry and pore opening.'
+      },
+      {
+        id: 'q2',
+        classLevel: 'Class 11',
+        board: 'WBHSSE',
+        type: 'mcq',
+        text: 'Identify the heart chamber that receives oxygenated blood directly from the pulmonary veins returning from the lungs:',
+        diagramUrl: PRESET_DIAGRAMS.heart,
+        options: ['Right Atrium', 'Right Ventricle', 'Left Atrium', 'Left Ventricle'],
+        correctAnswerIndex: 2,
+        sampleAnswer: '',
+        positiveMarks: 4,
+        negativeMarks: -1,
+        timeLimit: 30,
+        explanation: 'The Left Atrium collects oxygenated blood from the four pulmonary veins before pumping it into the Left Ventricle.'
+      },
+      {
+        id: 'q3',
+        classLevel: 'Class 11',
+        board: 'CBSE / ICSE',
+        type: 'subjective',
+        text: 'Explain why plasma proteins like albumin do not filter into Bowman’s capsule under normal physiological conditions during ultrafiltration.',
+        diagramUrl: PRESET_DIAGRAMS.nephron,
+        options: [],
+        correctAnswerIndex: null,
+        sampleAnswer: 'Podocytes and basement membranes form slit pores of ~7nm. Plasma proteins are larger and negatively charged, preventing ultrafiltration.',
+        positiveMarks: 5,
+        negativeMarks: 0,
+        timeLimit: 60,
+        explanation: 'Size and charge selectivity of podocyte slit diaphragms prevent high-molecular-weight proteins from entering filtrate.'
+      }
+    ];
+
+    // --- Generate 50 Simulated Classmates for realistic competition ---
+    const GENERATE_INITIAL_STUDENTS = () => {
+      const firstNames = ['Aarav', 'Ananya', 'Rohan', 'Priya', 'Debjit', 'Sneha', 'Vikram', 'Tiyasa', 'Sourav', 'Ishita', 'Arpan', 'Bishal', 'Chitra', 'Divya', 'Esha', 'Farhan', 'Gaurav', 'Harini', 'Indrani', 'Jatin', 'Kavya', 'Lokesh', 'Meera', 'Nikhil', 'Omkar', 'Pooja', 'Qasim', 'Ritu', 'Siddharth', 'Tanvi', 'Uday', 'Vaishnavi', 'Wasim', 'Yash', 'Zoya', 'Abhishek', 'Bhumika', 'Chirag', 'Deepak', 'Ekta', 'Firoz', 'Gayatri', 'Himanshu', 'Isha', 'Joy', 'Kritika', 'Lalit', 'Monika', 'Navin', 'Ojas'];
+      const lastNames = ['Mukherjee', 'Banerjee', 'Chakraborty', 'Das', 'Roy', 'Ganguly', 'Sen', 'Dutta', 'Ghosh', 'Chatterjee', 'Mitra', 'Saha', 'Basu', 'Nandi'];
+      const boards = ['CBSE', 'ICSE', 'ISC', 'WBSSE', 'WBHSSE'];
+      const classes = ['Class 9', 'Class 10', 'Class 11', 'Class 12'];
+      const avatars = ['👨‍🎓', '👩‍🎓', '🧑‍🎓', '👩‍🔬', '👨‍🔬', '🧑‍🏫'];
+
+      const list = [];
+      for (let i = 0; i < 52; i++) {
+        const fn = firstNames[i % firstNames.length];
+        const ln = lastNames[(i * 3) % lastNames.length];
+        list.push({
+          id: `sim_student_${i + 1}`,
+          name: `${fn} ${ln}`,
+          classLevel: classes[i % classes.length],
+          board: boards[i % boards.length],
+          score: Math.max(0, Math.floor(28 - i * 0.45 + (Math.random() * 3))),
+          avatar: avatars[i % avatars.length],
+          streak: Math.floor(Math.random() * 4),
+          isSimulated: true
+        });
+      }
+      return list;
+    };
+
+    // Main App Component
+    function App() {
+      // Role & Navigation
+      const [role, setRole] = useState('teacher'); // 'teacher' | 'student'
+      const [teacherTab, setTeacherTab] = useState('questions'); // 'questions' | 'session' | 'leaderboard'
+      
+      // Session State
+      const [session, setSession] = useState({
+        code: 'BIO-LIVE-9021',
+        topic: 'Plant & Human Physiology (Ultrafiltration, Heart & Stomata)',
+        classLevel: 'Class 11',
+        board: 'CBSE / WBSSE / ICSE',
+        date: new Date().toISOString().split('T')[0],
+        activeQuestionIndex: null,
+        questionState: 'idle', // 'idle' | 'active' | 'evaluating' | 'completed'
+        timerRemaining: 0,
+        totalTimer: 30
+      });
+
+      // Questions State
+      const [questions, setQuestions] = useState(INITIAL_QUESTIONS);
+      const [newQ, setNewQ] = useState({
+        classLevel: 'Class 11',
+        board: 'CBSE',
+        type: 'mcq',
+        text: '',
+        diagramUrl: '',
+        options: ['', '', '', ''],
+        correctAnswerIndex: 0,
+        sampleAnswer: '',
+        positiveMarks: 4,
+        negativeMarks: -1,
+        timeLimit: 30,
+        explanation: ''
+      });
+      const [uploadedImagePreview, setUploadedImagePreview] = useState(null);
+
+      // Student Profile State
+      const [studentProfile, setStudentProfile] = useState({
+        name: '',
+        classLevel: 'Class 11',
+        board: 'CBSE',
+        joined: false,
+        id: 'student_' + Math.floor(1000 + Math.random() * 9000)
+      });
+      const [sessionInput, setSessionInput] = useState('');
+      const [studentAnswer, setStudentAnswer] = useState('');
+      const [studentSubmitted, setStudentSubmitted] = useState(false);
+      const [studentFeedback, setStudentFeedback] = useState(null);
+
+      // Participants List State
+      const [participants, setParticipants] = useState(GENERATE_INITIAL_STUDENTS);
+      const [toast, setToast] = useState(null);
+
+      // Multi-tab BroadcastChannel & Storage Sync
+      const broadcastChannelRef = useRef(null);
+
+      // Toast notification helper
+      const showToast = (message, type = 'info') => {
+        setToast({ message, type });
+        setTimeout(() => setToast(null), 3800);
+      };
+
+      // Check URL params on mount
+      useEffect(() => {
+        const urlParams = new URLSearchParams(window.location.search);
+        const codeParam = urlParams.get('session');
+        if (codeParam) {
+          setSessionInput(codeParam);
+          setSession(prev => ({ ...prev, code: codeParam }));
+          setRole('student');
+          showToast(`Session code ${codeParam} detected from URL! Please enter your name to join.`, 'success');
+        }
+
+        // Initialize BroadcastChannel
+        try {
+          broadcastChannelRef.current = new BroadcastChannel('soumendra_biology_live_channel');
+          broadcastChannelRef.current.onmessage = (event) => {
+            const data = event.data;
+            if (data.type === 'BROADCAST_QUESTION') {
+              setSession(prev => ({
+                ...prev,
+                activeQuestionIndex: data.questionIndex,
+                questionState: 'active',
+                timerRemaining: data.timeLimit,
+                totalTimer: data.timeLimit
+              }));
+              setStudentSubmitted(false);
+              setStudentAnswer('');
+              setStudentFeedback(null);
+              showToast(`New question #${data.questionIndex + 1} broadcasted by Soumendra Sir!`, 'info');
+            } else if (data.type === 'END_QUESTION') {
+              setSession(prev => ({ ...prev, questionState: 'evaluating' }));
+            } else if (data.type === 'REVEAL_ANSWER') {
+              setSession(prev => ({ ...prev, questionState: 'completed' }));
+            } else if (data.type === 'STUDENT_SUBMISSION') {
+              setParticipants(prev => prev.map(p => {
+                if (p.id === data.student.id) {
+                  return { ...p, score: data.student.score };
+                }
+                return p;
+              }));
+            }
+          };
+        } catch (e) {
+          console.log('BroadcastChannel fallback to localStorage');
+        }
+
+        // Initialize Lucide Icons
+        if (window.lucide) {
+          window.lucide.createIcons();
+        }
+
+        return () => {
+          if (broadcastChannelRef.current) {
+            broadcastChannelRef.current.close();
+          }
+        };
+      }, []);
+
+      useEffect(() => {
+        if (window.lucide) {
+          window.lucide.createIcons();
+        }
+      });
+
+      // Timer Countdown Effect
+      useEffect(() => {
+        let timer = null;
+        if (session.questionState === 'active' && session.timerRemaining > 0) {
+          timer = setInterval(() => {
+            setSession(prev => {
+              if (prev.timerRemaining <= 1) {
+                return { ...prev, timerRemaining: 0, questionState: 'evaluating' };
+              }
+              return { ...prev, timerRemaining: prev.timerRemaining - 1 };
+            });
+          }, 1000);
+        }
+        return () => clearInterval(timer);
+      }, [session.questionState, session.timerRemaining]);
+
+      // File upload reader for diagram image (JPG, PNG, JPEG)
+      const handleImageFileUpload = (e) => {
+        const file = e.target.files[0];
+        if (file) {
+          const reader = new FileReader();
+          reader.onloadend = () => {
+            setUploadedImagePreview(reader.result);
+            setNewQ(prev => ({ ...prev, diagramUrl: reader.result }));
+            showToast('Diagram image loaded successfully!', 'success');
+          };
+          reader.readAsDataURL(file);
+        }
+      };
+
+      // Save question to question bank
+      const handleSaveQuestion = (e) => {
+        e.preventDefault();
+        if (!newQ.text.trim()) {
+          showToast('Please enter the question text!', 'warning');
+          return;
+        }
+
+        const questionObj = {
+          ...newQ,
+          id: 'q_' + Date.now(),
+          diagramUrl: uploadedImagePreview || newQ.diagramUrl
+        };
+
+        setQuestions(prev => [...prev, questionObj]);
+        setNewQ({
+          classLevel: 'Class 11',
+          board: 'CBSE',
+          type: 'mcq',
+          text: '',
+          diagramUrl: '',
+          options: ['', '', '', ''],
+          correctAnswerIndex: 0,
+          sampleAnswer: '',
+          positiveMarks: 4,
+          negativeMarks: -1,
+          timeLimit: 30,
+          explanation: ''
+        });
+        setUploadedImagePreview(null);
+        showToast('Question added to Biology Session Bank!', 'success');
+      };
+
+      // Broadcast Question to Live Room
+      const handleBroadcastQuestion = (index) => {
+        const targetQ = questions[index];
+        setSession(prev => ({
+          ...prev,
+          activeQuestionIndex: index,
+          questionState: 'active',
+          timerRemaining: targetQ.timeLimit,
+          totalTimer: targetQ.timeLimit
+        }));
+
+        setStudentSubmitted(false);
+        setStudentAnswer('');
+        setStudentFeedback(null);
+
+        // Sync via BroadcastChannel
+        if (broadcastChannelRef.current) {
+          broadcastChannelRef.current.postMessage({
+            type: 'BROADCAST_QUESTION',
+            questionIndex: index,
+            timeLimit: targetQ.timeLimit
+          });
+        }
+
+        // Simulate responses from background 50+ peer pool over duration
+        simulatePeerAnswers(targetQ);
+        showToast(`Question #${index + 1} pushed live to all 50+ students!`, 'success');
+      };
+
+      // Simulate Peer Pool Activity
+      const simulatePeerAnswers = (qObj) => {
+        setTimeout(() => {
+          setParticipants(prev => {
+            return prev.map(student => {
+              if (!student.isSimulated) return student;
+              const isCorrect = Math.random() < 0.7;
+              const delta = isCorrect ? qObj.positiveMarks : qObj.negativeMarks;
+              return {
+                ...student,
+                score: Math.max(0, student.score + delta),
+                streak: isCorrect ? student.streak + 1 : 0
+              };
+            });
+          });
+        }, (qObj.timeLimit * 1000) / 2);
+      };
+
+      // End question grading
+      const handleLockAnswers = () => {
+        setSession(prev => ({ ...prev, questionState: 'evaluating' }));
+        if (broadcastChannelRef.current) {
+          broadcastChannelRef.current.postMessage({ type: 'END_QUESTION' });
+        }
+        showToast('Question locked. Submissions closed for evaluation.', 'warning');
+      };
+
+      // Reveal correct answer & leaderboard
+      const handleRevealAnswer = () => {
+        setSession(prev => ({ ...prev, questionState: 'completed' }));
+        if (broadcastChannelRef.current) {
+          broadcastChannelRef.current.postMessage({ type: 'REVEAL_ANSWER' });
+        }
+        showToast('Correct answer and updated leaderboards revealed!', 'info');
+      };
+
+      // Join Student Session
+      const handleStudentJoin = (e) => {
+        e.preventDefault();
+        if (!studentProfile.name.trim()) {
+          showToast('Please enter your full name!', 'warning');
+          return;
+        }
+
+        const me = {
+          id: studentProfile.id,
+          name: studentProfile.name,
+          classLevel: studentProfile.classLevel,
+          board: studentProfile.board,
+          score: 0,
+          avatar: '🎓',
+          streak: 0,
+          isSimulated: false,
+          isCurrentUser: true
+        };
+
+        setParticipants(prev => [me, ...prev.filter(p => !p.isCurrentUser)]);
+        setStudentProfile(prev => ({ ...prev, joined: true }));
+        playSound('rankup');
+        showToast(`Welcome ${studentProfile.name}! Connected to Soumendra Sir's Live Biology Session.`, 'success');
+      };
+
+      // Submit Student Answer
+      const handleStudentSubmit = (answerVal) => {
+        if (studentSubmitted || session.questionState !== 'active') return;
+
+        const currentQ = questions[session.activeQuestionIndex];
+        let isCorrect = false;
+        let pointsEarned = 0;
+
+        if (currentQ.type === 'mcq') {
+          isCorrect = Number(answerVal) === currentQ.correctAnswerIndex;
+          pointsEarned = isCorrect ? currentQ.positiveMarks : currentQ.negativeMarks;
+        } else {
+          isCorrect = true; // Subjective full credit attempt acknowledgment
+          pointsEarned = currentQ.positiveMarks;
+        }
+
+        setStudentSubmitted(true);
+        setStudentAnswer(answerVal);
+
+        // Update local score
+        let updatedScore = 0;
+        setParticipants(prev => prev.map(p => {
+          if (p.id === studentProfile.id || p.isCurrentUser) {
+            updatedScore = Math.max(0, p.score + pointsEarned);
+            const updated = {
+              ...p,
+              score: updatedScore,
+              streak: isCorrect ? p.streak + 1 : 0
+            };
+            if (broadcastChannelRef.current) {
+              broadcastChannelRef.current.postMessage({
+                type: 'STUDENT_SUBMISSION',
+                student: updated
+              });
+            }
+            return updated;
+          }
+          return p;
+        }));
+
+        if (isCorrect) {
+          playSound('correct');
+        } else {
+          playSound('incorrect');
+        }
+
+        // Rank calculation
+        const sortedTemp = [...participants].sort((a, b) => b.score - a.score);
+        const myRank = sortedTemp.findIndex(p => p.id === studentProfile.id || p.isCurrentUser) + 1;
+
+        setStudentFeedback({
+          isCorrect,
+          pointsEarned,
+          rank: myRank > 0 ? myRank : 1,
+          message: isCorrect
+            ? `Excellent job! Correct answer (+${pointsEarned} marks)`
+            : `Incorrect choice (${pointsEarned} marks). Review the biology concept!`
+        });
+      };
+
+      // Generate share link
+      const getShareableLink = () => {
+        const origin = window.location.origin + window.location.pathname;
+        return `${origin}?session=${session.code}`;
+      };
+
+      const copyShareableLink = () => {
+        const link = getShareableLink();
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+          navigator.clipboard.writeText(link);
+        } else {
+          const input = document.createElement('input');
+          input.value = link;
+          document.body.appendChild(input);
+          input.select();
+          document.execCommand('copy');
+          document.body.removeChild(input);
+        }
+        showToast('Shareable student link copied to clipboard!', 'success');
+      };
+
+      // Dynamically sorted leaderboard
+      const sortedLeaderboard = useMemo(() => {
+        return [...participants].sort((a, b) => b.score - a.score);
+      }, [participants]);
+
+      return (
+        <div className="min-h-screen bg-slate-950 text-slate-100 flex flex-col font-sans">
+          
+          {/* Toast System */}
+          {toast && (
+            <div className={`fixed top-5 right-5 z-50 px-5 py-3.5 rounded-2xl shadow-2xl flex items-center gap-3 border backdrop-blur-md transition-all duration-300 animate-bounce ${
+              toast.type === 'success' ? 'bg-emerald-950/90 text-emerald-200 border-emerald-500/60' :
+              toast.type === 'warning' ? 'bg-amber-950/90 text-amber-200 border-amber-500/60' :
+              'bg-cyan-950/90 text-cyan-200 border-cyan-500/60'
+            }`}>
+              <i data-lucide={toast.type === 'success' ? 'check-circle' : toast.type === 'warning' ? 'alert-triangle' : 'info'} className="w-5 h-5"></i>
+              <span className="text-sm font-medium">{toast.message}</span>
+            </div>
+          )}
+
+          {/* Top Navbar & Header */}
+          <header className="bg-slate-900/90 border-b border-slate-800 sticky top-0 z-40 backdrop-blur-md px-4 lg:px-8 py-3">
+            <div className="max-w-7xl mx-auto flex flex-col md:flex-row items-center justify-between gap-4">
+              
+              {/* Brand Logo */}
+              <div className="flex items-center gap-3">
+                <div className="w-12 h-12 bg-gradient-to-tr from-emerald-600 to-teal-400 rounded-2xl flex items-center justify-center shadow-lg shadow-emerald-500/20">
+                  <i data-lucide="dna" className="w-7 h-7 text-slate-950 stroke-[2.5]"></i>
+                </div>
+                <div>
+                  <div className="flex items-center gap-2">
+                    <h1 className="text-xl font-extrabold bg-gradient-to-r from-emerald-400 via-teal-300 to-cyan-300 bg-clip-text text-transparent">
+                      Soumendra Sir Biology Classes
+                    </h1>
+                    <span className="bg-emerald-950 text-emerald-400 border border-emerald-800 text-[10px] font-extrabold px-2 py-0.5 rounded-full uppercase tracking-wider">
+                      Classes 9-12
+                    </span>
+                  </div>
+                  <p className="text-xs text-slate-400 font-medium">Interactive Live Assessment & Competition Hub</p>
+                </div>
+              </div>
+
+              {/* Session Meta Badge & Share Button */}
+              <div className="flex flex-wrap items-center gap-3 bg-slate-950/80 border border-slate-800 px-4 py-2 rounded-2xl text-xs">
+                <div className="flex items-center gap-2 border-r border-slate-800 pr-3">
+                  <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse-ring"></span>
+                  <span className="text-slate-200 font-semibold max-w-[200px] truncate">{session.topic}</span>
+                </div>
+                <div className="flex items-center gap-2 text-slate-400">
+                  <span>Code: <strong className="text-emerald-400 font-mono font-bold">{session.code}</strong></span>
+                </div>
+                <button
+                  onClick={copyShareableLink}
+                  className="flex items-center gap-1.5 bg-emerald-600/20 hover:bg-emerald-600/40 text-emerald-300 px-3 py-1 rounded-xl border border-emerald-500/30 transition text-xs font-semibold"
+                  title="Copy working shareable link"
+                >
+                  <i data-lucide="share-2" className="w-3.5 h-3.5"></i>
+                  <span>Copy Share Link</span>
+                </button>
+              </div>
+
+              {/* Role Toggle */}
+              <div className="flex items-center bg-slate-950 p-1.5 rounded-2xl border border-slate-800">
+                <button
+                  onClick={() => setRole('teacher')}
+                  className={`flex items-center gap-2 px-3.5 py-1.5 rounded-xl text-xs font-bold transition ${
+                    role === 'teacher' ? 'bg-emerald-600 text-white shadow-lg' : 'text-slate-400 hover:text-slate-200'
+                  }`}
+                >
+                  <i data-lucide="shield-check" className="w-4 h-4"></i>
+                  <span>Teacher Panel</span>
+                </button>
+                <button
+                  onClick={() => setRole('student')}
+                  className={`flex items-center gap-2 px-3.5 py-1.5 rounded-xl text-xs font-bold transition ${
+                    role === 'student' ? 'bg-teal-600 text-white shadow-lg' : 'text-slate-400 hover:text-slate-200'
+                  }`}
+                >
+                  <i data-lucide="user-check" className="w-4 h-4"></i>
+                  <span>Student View</span>
+                </button>
+              </div>
+
+            </div>
+          </header>
+
+          {/* Body Container */}
+          <main className="flex-1 max-w-7xl w-full mx-auto p-4 lg:p-6 grid grid-cols-1 lg:grid-cols-12 gap-6">
+
+            {/* ========================================================================= */}
+            {/* TEACHER CONTROL ROOM */}
+            {/* ========================================================================= */}
+            {role === 'teacher' && (
+              <>
+                {/* Navigation Bar for Teacher */}
+                <div className="lg:col-span-12 flex items-center border-b border-slate-800 gap-2 pb-2 overflow-x-auto">
+                  <button
+                    onClick={() => setTeacherTab('questions')}
+                    className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition ${
+                      teacherTab === 'questions'
+                        ? 'bg-emerald-600/20 text-emerald-400 border border-emerald-500/40'
+                        : 'text-slate-400 hover:bg-slate-900'
+                    }`}
+                  >
+                    <i data-lucide="file-plus" className="w-4 h-4"></i>
+                    <span>Question Builder & Bank ({questions.length})</span>
+                  </button>
+                  <button
+                    onClick={() => setTeacherTab('session')}
+                    className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition ${
+                      teacherTab === 'session'
+                        ? 'bg-emerald-600/20 text-emerald-400 border border-emerald-500/40'
+                        : 'text-slate-400 hover:bg-slate-900'
+                    }`}
+                  >
+                    <i data-lucide="radio" className="w-4 h-4"></i>
+                    <span>Live Session Controller</span>
+                  </button>
+                  <button
+                    onClick={() => setTeacherTab('leaderboard')}
+                    className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition ${
+                      teacherTab === 'leaderboard'
+                        ? 'bg-emerald-600/20 text-emerald-400 border border-emerald-500/40'
+                        : 'text-slate-400 hover:bg-slate-900'
+                    }`}
+                  >
+                    <i data-lucide="trophy" className="w-4 h-4"></i>
+                    <span>Live 50+ Leaderboard ({participants.length} Students)</span>
+                  </button>
+                </div>
+
+                {/* TAB 1: QUESTION BUILDER */}
+                {teacherTab === 'questions' && (
+                  <div className="lg:col-span-12 grid grid-cols-1 lg:grid-cols-12 gap-6">
+                    
+                    {/* Question Creator Form */}
+                    <div className="lg:col-span-7 bg-slate-900/80 border border-slate-800 rounded-3xl p-5 lg:p-6 shadow-2xl">
+                      <div className="flex items-center justify-between mb-5 border-b border-slate-800 pb-3">
+                        <h2 className="text-base font-bold text-emerald-400 flex items-center gap-2">
+                          <i data-lucide="plus-circle" className="w-5 h-5"></i>
+                          <span>Create Evaluation Question</span>
+                        </h2>
+                        <span className="text-xs bg-slate-800 text-slate-300 px-3 py-1 rounded-xl">
+                          Classes 9, 10, 11, 12
+                        </span>
+                      </div>
+
+                      <form onSubmit={handleSaveQuestion} className="space-y-4">
+                        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                          <div>
+                            <label className="block text-xs font-semibold text-slate-300 mb-1">Target Class</label>
+                            <select
+                              value={newQ.classLevel}
+                              onChange={(e) => setNewQ({ ...newQ, classLevel: e.target.value })}
+                              className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-slate-200 focus:outline-none focus:border-emerald-500"
+                            >
+                              <option value="Class 9">Class 9</option>
+                              <option value="Class 10">Class 10</option>
+                              <option value="Class 11">Class 11</option>
+                              <option value="Class 12">Class 12</option>
+                            </select>
+                          </div>
+
+                          <div>
+                            <label className="block text-xs font-semibold text-slate-300 mb-1">Board</label>
+                            <select
+                              value={newQ.board}
+                              onChange={(e) => setNewQ({ ...newQ, board: e.target.value })}
+                              className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-slate-200 focus:outline-none focus:border-emerald-500"
+                            >
+                              <option value="CBSE">CBSE</option>
+                              <option value="ICSE">ICSE</option>
+                              <option value="ISC">ISC</option>
+                              <option value="WBSSE">WBSSE (Madhyamik)</option>
+                              <option value="WBHSSE">WBHSSE (HS)</option>
+                            </select>
+                          </div>
+
+                          <div>
+                            <label className="block text-xs font-semibold text-slate-300 mb-1">Question Type</label>
+                            <select
+                              value={newQ.type}
+                              onChange={(e) => setNewQ({ ...newQ, type: e.target.value })}
+                              className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-slate-200 focus:outline-none focus:border-emerald-500"
+                            >
+                              <option value="mcq">Multiple Choice (MCQ)</option>
+                              <option value="subjective">Subjective / Short Answer</option>
+                            </select>
+                          </div>
+                        </div>
+
+                        {/* Question Text */}
+                        <div>
+                          <label className="block text-xs font-semibold text-slate-300 mb-1">Question Text</label>
+                          <textarea
+                            rows={3}
+                            required
+                            placeholder="e.g. Describe the role of nephrons in glomerular filtration or select the correct organelle..."
+                            value={newQ.text}
+                            onChange={(e) => setNewQ({ ...newQ, text: e.target.value })}
+                            className="w-full bg-slate-950 border border-slate-800 rounded-xl p-3 text-xs text-slate-100 placeholder-slate-500 focus:outline-none focus:border-emerald-500"
+                          />
+                        </div>
+
+                        {/* Diagram Attachment (JPG, PNG, JPEG) */}
+                        <div className="bg-slate-950 p-4 rounded-2xl border border-slate-800/80 space-y-3">
+                          <div className="flex items-center justify-between">
+                            <label className="text-xs font-semibold text-slate-300 flex items-center gap-2">
+                              <i data-lucide="image" className="w-4 h-4 text-emerald-400"></i>
+                              <span>Biology Diagram Attachment (JPG, PNG, JPEG)</span>
+                            </label>
+                            <span className="text-[11px] text-slate-400">File upload or preset</span>
+                          </div>
+
+                          <div className="flex flex-wrap items-center gap-3">
+                            <label className="cursor-pointer bg-slate-900 hover:bg-slate-800 text-slate-200 text-xs px-3 py-2 rounded-xl border border-slate-700 flex items-center gap-2 transition">
+                              <i data-lucide="upload" className="w-4 h-4 text-teal-400"></i>
+                              <span>Choose Local Image File</span>
+                              <input
+                                type="file"
+                                accept="image/png, image/jpeg, image/jpg"
+                                onChange={handleImageFileUpload}
+                                className="hidden"
+                              />
+                            </label>
+
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setUploadedImagePreview(PRESET_DIAGRAMS.stomata);
+                                setNewQ(prev => ({ ...prev, diagramUrl: PRESET_DIAGRAMS.stomata }));
+                              }}
+                              className="text-xs bg-emerald-950/80 text-emerald-300 border border-emerald-800 px-2.5 py-1.5 rounded-xl hover:bg-emerald-900"
+                            >
+                              Preset: Stomata
+                            </button>
+
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setUploadedImagePreview(PRESET_DIAGRAMS.heart);
+                                setNewQ(prev => ({ ...prev, diagramUrl: PRESET_DIAGRAMS.heart }));
+                              }}
+                              className="text-xs bg-rose-950/80 text-rose-300 border border-rose-800 px-2.5 py-1.5 rounded-xl hover:bg-rose-900"
+                            >
+                              Preset: Heart
+                            </button>
+
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setUploadedImagePreview(PRESET_DIAGRAMS.nephron);
+                                setNewQ(prev => ({ ...prev, diagramUrl: PRESET_DIAGRAMS.nephron }));
+                              }}
+                              className="text-xs bg-sky-950/80 text-sky-300 border border-sky-800 px-2.5 py-1.5 rounded-xl hover:bg-sky-900"
+                            >
+                              Preset: Nephron
+                            </button>
+                          </div>
+
+                          {/* Preview attached diagram */}
+                          {uploadedImagePreview && (
+                            <div className="relative mt-2 bg-slate-900 p-2 rounded-xl border border-slate-800 flex justify-center max-h-48 overflow-hidden">
+                              <img src={uploadedImagePreview} alt="Diagram preview" className="max-h-44 object-contain rounded-lg" />
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setUploadedImagePreview(null);
+                                  setNewQ(prev => ({ ...prev, diagramUrl: '' }));
+                                }}
+                                className="absolute top-2 right-2 bg-rose-600 text-white p-1 rounded-full text-xs hover:bg-rose-500"
+                              >
+                                ✕
+                              </button>
+                            </div>
+                          )}
+                        </div>
+
+                        {/* MCQ Options vs Subjective Model Answer */}
+                        {newQ.type === 'mcq' ? (
+                          <div className="space-y-2">
+                            <label className="block text-xs font-semibold text-slate-300">MCQ Choices & Correct Key</label>
+                            {newQ.options.map((opt, i) => (
+                              <div key={i} className="flex items-center gap-2">
+                                <input
+                                  type="radio"
+                                  name="correctOpt"
+                                  checked={newQ.correctAnswerIndex === i}
+                                  onChange={() => setNewQ({ ...newQ, correctAnswerIndex: i })}
+                                  className="accent-emerald-500 w-4 h-4 cursor-pointer"
+                                />
+                                <input
+                                  type="text"
+                                  placeholder={`Option ${String.fromCharCode(65 + i)}`}
+                                  value={opt}
+                                  onChange={(e) => {
+                                    const opts = [...newQ.options];
+                                    opts[i] = e.target.value;
+                                    setNewQ({ ...newQ, options: opts });
+                                  }}
+                                  className="flex-1 bg-slate-950 border border-slate-800 rounded-xl px-3 py-1.5 text-xs text-slate-200 focus:outline-none focus:border-emerald-500"
+                                />
+                              </div>
+                            ))}
+                          </div>
+                        ) : (
+                          <div>
+                            <label className="block text-xs font-semibold text-slate-300 mb-1">Model Answer / Evaluation Criteria</label>
+                            <textarea
+                              rows={2}
+                              placeholder="Key biological terms required for full points..."
+                              value={newQ.sampleAnswer}
+                              onChange={(e) => setNewQ({ ...newQ, sampleAnswer: e.target.value })}
+                              className="w-full bg-slate-950 border border-slate-800 rounded-xl p-2.5 text-xs text-slate-200 focus:outline-none focus:border-emerald-500"
+                            />
+                          </div>
+                        )}
+
+                        {/* Marking Rules & Timer */}
+                        <div className="grid grid-cols-3 gap-3 bg-slate-950/60 p-3 rounded-2xl border border-slate-800">
+                          <div>
+                            <label className="block text-[11px] font-semibold text-emerald-400 mb-1">Positive Marks (+)</label>
+                            <input
+                              type="number"
+                              value={newQ.positiveMarks}
+                              onChange={(e) => setNewQ({ ...newQ, positiveMarks: Number(e.target.value) })}
+                              className="w-full bg-slate-950 border border-emerald-900/60 rounded-xl px-3 py-1.5 text-xs text-emerald-300 font-mono font-bold"
+                            />
+                          </div>
+                          <div>
+                            <label className="block text-[11px] font-semibold text-rose-400 mb-1">Negative Marks (-)</label>
+                            <input
+                              type="number"
+                              value={newQ.negativeMarks}
+                              onChange={(e) => setNewQ({ ...newQ, negativeMarks: Number(e.target.value) })}
+                              className="w-full bg-slate-950 border border-rose-900/60 rounded-xl px-3 py-1.5 text-xs text-rose-300 font-mono font-bold"
+                            />
+                          </div>
+                          <div>
+                            <label className="block text-[11px] font-semibold text-cyan-400 mb-1">Timer (Sec)</label>
+                            <input
+                              type="number"
+                              value={newQ.timeLimit}
+                              onChange={(e) => setNewQ({ ...newQ, timeLimit: Number(e.target.value) })}
+                              className="w-full bg-slate-950 border border-cyan-900/60 rounded-xl px-3 py-1.5 text-xs text-cyan-300 font-mono font-bold"
+                            />
+                          </div>
+                        </div>
+
+                        <button
+                          type="submit"
+                          className="w-full bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white font-bold py-3 rounded-2xl text-xs shadow-xl shadow-emerald-900/40 flex items-center justify-center gap-2 transition"
+                        >
+                          <i data-lucide="plus" className="w-4 h-4"></i>
+                          <span>Save Question to Bank</span>
+                        </button>
+                      </form>
+                    </div>
+
+                    {/* Question Bank Preview List */}
+                    <div className="lg:col-span-5 bg-slate-900/80 border border-slate-800 rounded-3xl p-5 lg:p-6 shadow-2xl flex flex-col justify-between">
+                      <div>
+                        <div className="flex items-center justify-between mb-4 pb-2 border-b border-slate-800">
+                          <h3 className="font-bold text-slate-200 flex items-center gap-2 text-sm">
+                            <i data-lucide="book-open" className="w-4 h-4 text-emerald-400"></i>
+                            <span>Pre-loaded & Custom Question Bank</span>
+                          </h3>
+                          <span className="text-xs bg-slate-800 text-slate-400 px-2.5 py-0.5 rounded-full font-mono">{questions.length} Ready</span>
+                        </div>
+
+                        <div className="space-y-3 custom-scrollbar overflow-y-auto max-h-[550px] pr-1">
+                          {questions.map((q, idx) => (
+                            <div
+                              key={q.id}
+                              className={`p-4 rounded-2xl border transition ${
+                                session.activeQuestionIndex === idx
+                                  ? 'bg-emerald-950/40 border-emerald-500/80 shadow-lg'
+                                  : 'bg-slate-950/80 border-slate-800 hover:border-slate-700'
+                              }`}
+                            >
+                              <div className="flex items-center justify-between text-[11px] mb-2">
+                                <span className="bg-slate-800 text-teal-300 font-semibold px-2 py-0.5 rounded-lg border border-slate-700">
+                                  {q.classLevel} • {q.board}
+                                </span>
+                                <div className="flex items-center gap-2 font-mono">
+                                  <span className="text-emerald-400 font-bold">+{q.positiveMarks}</span>
+                                  <span className="text-rose-400 font-bold">{q.negativeMarks}</span>
+                                  <span className="text-slate-400 flex items-center gap-1">
+                                    <i data-lucide="clock" className="w-3 h-3"></i> {q.timeLimit}s
+                                  </span>
+                                </div>
+                              </div>
+
+                              <p className="text-xs font-semibold text-slate-100 line-clamp-2 mb-2">
+                                #{idx + 1}. {q.text}
+                              </p>
+
+                              {q.diagramUrl && (
+                                <div className="mb-2 bg-slate-900 p-1.5 rounded-xl border border-slate-800 flex items-center gap-2 text-[11px] text-slate-400">
+                                  <i data-lucide="image" className="w-3.5 h-3.5 text-emerald-400"></i>
+                                  <span>Attached Diagram</span>
+                                </div>
+                              )}
+
+                              <div className="flex items-center justify-between mt-3 pt-2 border-t border-slate-900">
+                                <span className="text-[10px] uppercase tracking-wider text-slate-400 font-bold">
+                                  {q.type}
+                                </span>
+                                <button
+                                  onClick={() => {
+                                    setTeacherTab('session');
+                                    handleBroadcastQuestion(idx);
+                                  }}
+                                  className="bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold px-3 py-1.5 rounded-xl flex items-center gap-1.5 shadow"
+                                >
+                                  <i data-lucide="play" className="w-3.5 h-3.5 fill-current"></i>
+                                  <span>Broadcast Live</span>
+                                </button>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    </div>
+
+                  </div>
+                )}
+
+                {/* TAB 2: LIVE SESSION CONTROLLER */}
+                {teacherTab === 'session' && (
+                  <div className="lg:col-span-12 grid grid-cols-1 lg:grid-cols-12 gap-6">
+                    
+                    {/* Live Broadcast Arena */}
+                    <div className="lg:col-span-8 bg-slate-900/90 border border-slate-800 rounded-3xl p-6 shadow-2xl flex flex-col justify-between">
+                      <div>
+                        {/* Live Room Header */}
+                        <div className="flex flex-wrap items-center justify-between border-b border-slate-800 pb-4 mb-4 gap-3">
+                          <div>
+                            <span className="text-[11px] text-emerald-400 font-extrabold uppercase tracking-widest">
+                              Teacher Live Room Broadcast
+                            </span>
+                            <h2 className="text-lg font-bold text-white mt-0.5">
+                              {session.topic}
+                            </h2>
+                          </div>
+
+                          {/* Countdown Timer Widget */}
+                          <div className="flex items-center gap-3 bg-slate-950 border border-slate-800 px-4 py-2 rounded-2xl">
+                            <i data-lucide="clock" className={`w-5 h-5 ${session.timerRemaining < 10 ? 'text-rose-400 animate-spin' : 'text-emerald-400'}`}></i>
+                            <div>
+                              <div className="text-[10px] text-slate-400 uppercase font-semibold">Live Timer</div>
+                              <div className="text-base font-mono font-bold text-slate-100">
+                                {session.timerRemaining}s
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Active Question Display */}
+                        {session.activeQuestionIndex !== null ? (
+                          <div className="space-y-4">
+                            <div className="flex items-center justify-between bg-slate-950/80 p-3 rounded-2xl border border-slate-800">
+                              <span className="text-xs font-bold text-teal-300">
+                                Active Question #{session.activeQuestionIndex + 1} ({questions[session.activeQuestionIndex].classLevel})
+                              </span>
+                              <span className="text-xs bg-emerald-950 text-emerald-300 border border-emerald-800 px-3 py-0.5 rounded-full font-mono font-bold">
+                                +{questions[session.activeQuestionIndex].positiveMarks} / {questions[session.activeQuestionIndex].negativeMarks} Marks
+                              </span>
+                            </div>
+
+                            <h3 className="text-base font-semibold text-slate-100 leading-relaxed">
+                              {questions[session.activeQuestionIndex].text}
+                            </h3>
+
+                            {/* Diagram Image Render */}
+                            {questions[session.activeQuestionIndex].diagramUrl && (
+                              <div className="bg-slate-950 p-4 rounded-2xl border border-slate-800 flex justify-center max-h-60 overflow-hidden">
+                                <img
+                                  src={questions[session.activeQuestionIndex].diagramUrl}
+                                  alt="Biology Diagram"
+                                  className="max-h-52 object-contain rounded-xl"
+                                />
+                              </div>
+                            )}
+
+                            {/* MCQ Options Preview */}
+                            {questions[session.activeQuestionIndex].type === 'mcq' && (
+                              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2">
+                                {questions[session.activeQuestionIndex].options.map((opt, oIdx) => {
+                                  const isCorrect = oIdx === questions[session.activeQuestionIndex].correctAnswerIndex;
+                                  const isCompleted = session.questionState === 'completed';
+                                  return (
+                                    <div
+                                      key={oIdx}
+                                      className={`p-3.5 rounded-2xl border flex items-center justify-between text-xs font-medium ${
+                                        isCompleted && isCorrect
+                                          ? 'bg-emerald-950/80 border-emerald-500 text-emerald-200 font-bold'
+                                          : 'bg-slate-950 border-slate-800 text-slate-200'
+                                      }`}
+                                    >
+                                      <div className="flex items-center gap-2.5">
+                                        <span className="w-6 h-6 rounded-full bg-slate-800 text-slate-300 text-[11px] font-bold flex items-center justify-center">
+                                          {String.fromCharCode(65 + oIdx)}
+                                        </span>
+                                        <span>{opt}</span>
+                                      </div>
+                                      {isCompleted && isCorrect && (
+                                        <i data-lucide="check-circle" className="w-4 h-4 text-emerald-400"></i>
+                                      )}
+                                    </div>
+                                  );
+                                })}
+                              </div>
+                            )}
+
+                            {/* Subjective Rubric Preview */}
+                            {questions[session.activeQuestionIndex].type === 'subjective' && (
+                              <div className="bg-slate-950 p-4 rounded-2xl border border-slate-800 space-y-1.5">
+                                <span className="text-[11px] font-bold text-amber-400 uppercase tracking-wider">Model Answer Criteria</span>
+                                <p className="text-xs text-slate-300 leading-relaxed">
+                                  {questions[session.activeQuestionIndex].sampleAnswer}
+                                </p>
+                              </div>
+                            )}
+                          </div>
+                        ) : (
+                          <div className="py-20 text-center text-slate-400 space-y-3">
+                            <i data-lucide="help-circle" className="w-12 h-12 text-slate-700 mx-auto"></i>
+                            <p className="text-sm font-semibold">No live question is currently broadcasted.</p>
+                            <p className="text-xs text-slate-500">Select any question from the bank to start pushing questions live.</p>
+                          </div>
+                        )}
+                      </div>
+
+                      {/* Control Buttons */}
+                      <div className="pt-6 border-t border-slate-800 flex flex-wrap items-center justify-between gap-3 mt-6">
+                        <div className="flex items-center gap-2">
+                          <button
+                            disabled={session.activeQuestionIndex === null || session.questionState !== 'active'}
+                            onClick={handleLockAnswers}
+                            className="bg-amber-600 hover:bg-amber-500 disabled:opacity-40 text-white text-xs font-bold px-4 py-2.5 rounded-xl flex items-center gap-2 shadow transition"
+                          >
+                            <i data-lucide="pause" className="w-4 h-4"></i>
+                            <span>Lock Answers</span>
+                          </button>
+
+                          <button
+                            disabled={session.activeQuestionIndex === null || session.questionState === 'idle'}
+                            onClick={handleRevealAnswer}
+                            className="bg-emerald-600 hover:bg-emerald-500 disabled:opacity-40 text-white text-xs font-bold px-4 py-2.5 rounded-xl flex items-center gap-2 shadow transition"
+                          >
+                            <i data-lucide="eye" className="w-4 h-4"></i>
+                            <span>Reveal Answer & Rank</span>
+                          </button>
+                        </div>
+
+                        <button
+                          onClick={() => {
+                            const nextIdx = (session.activeQuestionIndex === null ? 0 : session.activeQuestionIndex + 1) % questions.length;
+                            handleBroadcastQuestion(nextIdx);
+                          }}
+                          className="bg-gradient-to-r from-teal-600 to-emerald-600 hover:from-teal-500 hover:to-emerald-500 text-white text-xs font-bold px-5 py-2.5 rounded-xl flex items-center gap-2 shadow-lg transition"
+                        >
+                          <span>Next Question</span>
+                          <i data-lucide="chevron-right" className="w-4 h-4"></i>
+                        </button>
+                      </div>
+                    </div>
+
+                    {/* Real-time Participant Monitor */}
+                    <div className="lg:col-span-4 bg-slate-900/90 border border-slate-800 rounded-3xl p-5 shadow-2xl flex flex-col justify-between">
+                      <div>
+                        <div className="flex items-center justify-between mb-4 pb-2 border-b border-slate-800">
+                          <h3 className="font-bold text-slate-200 flex items-center gap-2 text-xs uppercase tracking-wider">
+                            <i data-lucide="users" className="w-4 h-4 text-emerald-400"></i>
+                            <span>Live Class Roster</span>
+                          </h3>
+                          <span className="text-xs bg-emerald-950 text-emerald-400 border border-emerald-800 px-2.5 py-0.5 rounded-full font-mono font-bold">
+                            {participants.length} Active
+                          </span>
+                        </div>
+
+                        <div className="space-y-2 mb-4">
+                          <div className="bg-slate-950 p-2.5 rounded-xl border border-slate-800/80 flex justify-between text-xs">
+                            <span className="text-slate-400">Classes:</span>
+                            <span className="text-emerald-400 font-bold">Class 9, 10, 11, 12</span>
+                          </div>
+                          <div className="bg-slate-950 p-2.5 rounded-xl border border-slate-800/80 flex justify-between text-xs">
+                            <span className="text-slate-400">Boards:</span>
+                            <span className="text-teal-400 font-bold">CBSE, ICSE, ISC, WBSSE</span>
+                          </div>
+                        </div>
+
+                        {/* Top 5 Preview */}
+                        <div className="space-y-2">
+                          <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Top 5 Live Performers</span>
+                          <div className="space-y-1.5 custom-scrollbar max-h-64 overflow-y-auto pr-1">
+                            {sortedLeaderboard.slice(0, 5).map((st, i) => (
+                              <div key={st.id} className="bg-slate-950 p-2.5 rounded-xl border border-slate-800 flex items-center justify-between text-xs">
+                                <div className="flex items-center gap-2">
+                                  <span className={`w-5 h-5 rounded-full text-[10px] font-extrabold flex items-center justify-center ${
+                                    i === 0 ? 'bg-amber-400 text-slate-950' : i === 1 ? 'bg-slate-300 text-slate-950' : i === 2 ? 'bg-amber-700 text-white' : 'bg-slate-800 text-slate-400'
+                                  }`}>
+                                    {i + 1}
+                                  </span>
+                                  <span className="font-semibold text-slate-200">{st.name}</span>
+                                </div>
+                                <span className="font-mono font-bold text-emerald-400">{st.score} pts</span>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      </div>
+
+                      <button
+                        onClick={() => setTeacherTab('leaderboard')}
+                        className="w-full mt-4 bg-slate-800 hover:bg-slate-700 text-white text-xs font-bold py-2.5 rounded-xl transition flex items-center justify-center gap-2 border border-slate-700"
+                      >
+                        <i data-lucide="trophy" className="w-4 h-4 text-amber-400"></i>
+                        <span>Open 50+ Leaderboard</span>
+                      </button>
+                    </div>
+
+                  </div>
+                )}
+
+                {/* TAB 3: FULL 50+ LIVE LEADERBOARD */}
+                {teacherTab === 'leaderboard' && (
+                  <div className="lg:col-span-12 bg-slate-900/90 border border-slate-800 rounded-3xl p-6 shadow-2xl">
+                    <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between pb-4 border-b border-slate-800 mb-6 gap-3">
+                      <div>
+                        <h2 className="text-xl font-extrabold text-white flex items-center gap-2">
+                          <i data-lucide="trophy" className="w-6 h-6 text-amber-400"></i>
+                          <span>Live Biology Competition Podium & Ranks</span>
+                        </h2>
+                        <p className="text-xs text-slate-400 mt-0.5">Real-time performance ranking of all {participants.length} competing students</p>
+                      </div>
+
+                      <div className="flex items-center gap-2">
+                        <span className="text-xs bg-slate-950 border border-slate-800 px-3 py-1.5 rounded-xl text-slate-300 font-mono">
+                          Session Code: <strong className="text-emerald-400">{session.code}</strong>
+                        </span>
+                      </div>
+                    </div>
+
+                    {/* Top 3 Podium Cards */}
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
+                      {/* Silver - 2nd */}
+                      {sortedLeaderboard[1] && (
+                        <div className="bg-gradient-to-b from-slate-900 to-slate-950 border border-slate-700 rounded-3xl p-5 text-center relative overflow-hidden shadow-xl flex flex-col justify-between order-2 md:order-1">
+                          <div className="absolute top-3 right-3 text-3xl">🥈</div>
+                          <div className="text-3xl mb-1">{sortedLeaderboard[1].avatar}</div>
+                          <h4 className="font-bold text-white text-sm">{sortedLeaderboard[1].name}</h4>
+                          <p className="text-xs text-slate-400 mt-0.5">{sortedLeaderboard[1].classLevel} • {sortedLeaderboard[1].board}</p>
+                          <div className="mt-3 bg-slate-950 py-2 rounded-2xl border border-slate-800">
+                            <span className="text-xl font-mono font-bold text-slate-200">{sortedLeaderboard[1].score} Marks</span>
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Gold - 1st */}
+                      {sortedLeaderboard[0] && (
+                        <div className="bg-gradient-to-b from-amber-950/70 via-slate-900 to-slate-950 border-2 border-amber-500/80 rounded-3xl p-6 text-center relative overflow-hidden shadow-2xl flex flex-col justify-between order-1 md:order-2 transform md:-translate-y-2">
+                          <div className="absolute top-3 right-3 text-4xl animate-bounce">🥇</div>
+                          <div className="text-4xl mb-1">{sortedLeaderboard[0].avatar}</div>
+                          <h4 className="font-extrabold text-amber-300 text-base">{sortedLeaderboard[0].name}</h4>
+                          <p className="text-xs text-amber-200/70 mt-0.5">{sortedLeaderboard[0].classLevel} • {sortedLeaderboard[0].board}</p>
+                          <div className="mt-3 bg-amber-950/90 py-2.5 rounded-2xl border border-amber-500/50">
+                            <span className="text-2xl font-mono font-extrabold text-amber-400">{sortedLeaderboard[0].score} Marks</span>
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Bronze - 3rd */}
+                      {sortedLeaderboard[2] && (
+                        <div className="bg-gradient-to-b from-slate-900 to-slate-950 border border-slate-700 rounded-3xl p-5 text-center relative overflow-hidden shadow-xl flex flex-col justify-between order-3">
+                          <div className="absolute top-3 right-3 text-3xl">🥉</div>
+                          <div className="text-3xl mb-1">{sortedLeaderboard[2].avatar}</div>
+                          <h4 className="font-bold text-white text-sm">{sortedLeaderboard[2].name}</h4>
+                          <p className="text-xs text-slate-400 mt-0.5">{sortedLeaderboard[2].classLevel} • {sortedLeaderboard[2].board}</p>
+                          <div className="mt-3 bg-slate-950 py-2 rounded-2xl border border-slate-800">
+                            <span className="text-xl font-mono font-bold text-amber-600">{sortedLeaderboard[2].score} Marks</span>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Table for 50+ Students */}
+                    <div className="overflow-x-auto rounded-2xl border border-slate-800">
+                      <table className="w-full text-left text-xs">
+                        <thead className="bg-slate-950 text-slate-400 uppercase font-bold border-b border-slate-800">
+                          <tr>
+                            <th className="p-3.5">Rank</th>
+                            <th className="p-3.5">Student Name</th>
+                            <th className="p-3.5">Class Level</th>
+                            <th className="p-3.5">Board</th>
+                            <th className="p-3.5 text-right">Total Score</th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-slate-800/80">
+                          {sortedLeaderboard.map((student, rankIdx) => (
+                            <tr
+                              key={student.id}
+                              className={`hover:bg-slate-800/40 transition ${
+                                student.isCurrentUser ? 'bg-emerald-950/50 font-bold border-l-4 border-l-emerald-500' : ''
+                              }`}
+                            >
+                              <td className="p-3.5 font-mono font-bold text-slate-300">
+                                #{rankIdx + 1}
+                              </td>
+                              <td className="p-3.5 flex items-center gap-2">
+                                <span>{student.avatar}</span>
+                                <span className="text-slate-100 font-semibold">{student.name}</span>
+                                {student.isCurrentUser && (
+                                  <span className="bg-emerald-600 text-white text-[10px] px-2 py-0.5 rounded-full font-bold">
+                                    You
+                                  </span>
+                                )}
+                              </td>
+                              <td className="p-3.5 text-slate-300">{student.classLevel}</td>
+                              <td className="p-3.5 text-slate-400">{student.board}</td>
+                              <td className="p-3.5 text-right font-mono font-bold text-emerald-400 text-sm">
+                                {student.score} pts
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+                )}
+              </>
+            )}
+
+            {/* ========================================================================= */}
+            {/* STUDENT PARTICIPANT VIEW */}
+            {/* ========================================================================= */}
+            {role === 'student' && (
+              <div className="lg:col-span-12 max-w-3xl mx-auto w-full space-y-6">
+                
+                {/* Registration Modal Screen */}
+                {!studentProfile.joined ? (
+                  <div className="bg-slate-900/90 border border-slate-800 rounded-3xl p-6 lg:p-8 shadow-2xl text-center space-y-6">
+                    <div className="w-16 h-16 bg-gradient-to-tr from-emerald-500 to-teal-400 rounded-2xl flex items-center justify-center mx-auto shadow-xl shadow-emerald-500/20">
+                      <i data-lucide="user-check" className="w-8 h-8 text-slate-950 stroke-[2.5]"></i>
+                    </div>
+
+                    <div>
+                      <h2 className="text-2xl font-bold text-white">Join Soumendra Sir's Live Session</h2>
+                      <p className="text-xs text-slate-400 mt-1">
+                        Enter your participant details to enter the live assessment & competition
+                      </p>
+                    </div>
+
+                    <form onSubmit={handleStudentJoin} className="space-y-4 text-left max-w-md mx-auto">
+                      <div>
+                        <label className="block text-xs font-semibold text-slate-300 mb-1">Session Link / Code</label>
+                        <input
+                          type="text"
+                          value={sessionInput || session.code}
+                          onChange={(e) => setSessionInput(e.target.value)}
+                          placeholder="BIO-LIVE-9021"
+                          className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2.5 text-xs font-mono text-emerald-400 uppercase font-bold focus:outline-none focus:border-emerald-500"
+                        />
+                      </div>
+
+                      <div>
+                        <label className="block text-xs font-semibold text-slate-300 mb-1">Full Name</label>
+                        <input
+                          type="text"
+                          required
+                          placeholder="e.g. Sourav Ganguly / Ananya Das"
+                          value={studentProfile.name}
+                          onChange={(e) => setStudentProfile({ ...studentProfile, name: e.target.value })}
+                          className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2.5 text-xs text-slate-100 placeholder-slate-500 focus:outline-none focus:border-emerald-500"
+                        />
+                      </div>
+
+                      <div className="grid grid-cols-2 gap-3">
+                        <div>
+                          <label className="block text-xs font-semibold text-slate-300 mb-1">Class Level</label>
+                          <select
+                            value={studentProfile.classLevel}
+                            onChange={(e) => setStudentProfile({ ...studentProfile, classLevel: e.target.value })}
+                            className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2.5 text-xs text-slate-200 focus:outline-none"
+                          >
+                            <option value="Class 9">Class 9</option>
+                            <option value="Class 10">Class 10</option>
+                            <option value="Class 11">Class 11</option>
+                            <option value="Class 12">Class 12</option>
+                          </select>
+                        </div>
+
+                        <div>
+                          <label className="block text-xs font-semibold text-slate-300 mb-1">Board</label>
+                          <select
+                            value={studentProfile.board}
+                            onChange={(e) => setStudentProfile({ ...studentProfile, board: e.target.value })}
+                            className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2.5 text-xs text-slate-200 focus:outline-none"
+                          >
+                            <option value="CBSE">CBSE</option>
+                            <option value="ICSE">ICSE</option>
+                            <option value="ISC">ISC</option>
+                            <option value="WBSSE">WBSSE (Madhyamik)</option>
+                            <option value="WBHSSE">WBHSSE (HS)</option>
+                          </select>
+                        </div>
+                      </div>
+
+                      <button
+                        type="submit"
+                        className="w-full bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white font-bold py-3 rounded-2xl shadow-xl shadow-emerald-900/50 flex items-center justify-center gap-2 transition text-xs"
+                      >
+                        <span>Join Live Assessment</span>
+                        <i data-lucide="arrow-right" className="w-4 h-4"></i>
+                      </button>
+                    </form>
+                  </div>
+                ) : (
+                  /* Student Question & Leaderboard View */
+                  <div className="bg-slate-900/90 border border-slate-800 rounded-3xl p-6 shadow-2xl space-y-6">
+                    
+                    {/* Header Banner */}
+                    <div className="flex items-center justify-between border-b border-slate-800 pb-4">
+                      <div className="flex items-center gap-3">
+                        <span className="text-2xl">🎓</span>
+                        <div>
+                          <h3 className="font-bold text-white text-sm">{studentProfile.name}</h3>
+                          <p className="text-xs text-slate-400">{studentProfile.classLevel} • {studentProfile.board}</p>
+                        </div>
+                      </div>
+
+                      <div className="bg-slate-950 border border-slate-800 px-4 py-2 rounded-2xl text-right">
+                        <div className="text-[10px] text-slate-400 uppercase font-semibold">Your Live Points</div>
+                        <div className="text-base font-mono font-bold text-emerald-400">
+                          {participants.find(p => p.id === studentProfile.id || p.isCurrentUser)?.score || 0} pts
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Active Question Display */}
+                    {session.activeQuestionIndex !== null ? (
+                      <div className="space-y-5">
+                        
+                        <div className="flex items-center justify-between bg-slate-950 p-3 rounded-2xl border border-slate-800">
+                          <span className="text-xs font-bold text-emerald-400">
+                            Live Question #{session.activeQuestionIndex + 1}
+                          </span>
+                          <div className="flex items-center gap-2 font-mono text-xs">
+                            <i data-lucide="clock" className={`w-4 h-4 ${session.timerRemaining < 10 ? 'text-rose-400 animate-bounce' : 'text-slate-400'}`}></i>
+                            <span className="font-bold text-slate-100">{session.timerRemaining}s</span>
+                          </div>
+                        </div>
+
+                        <h3 className="text-base font-bold text-white leading-relaxed">
+                          {questions[session.activeQuestionIndex].text}
+                        </h3>
+
+                        {/* Diagram Render */}
+                        {questions[session.activeQuestionIndex].diagramUrl && (
+                          <div className="bg-slate-950 p-4 rounded-2xl border border-slate-800 flex justify-center max-h-60 overflow-hidden">
+                            <img
+                              src={questions[session.activeQuestionIndex].diagramUrl}
+                              alt="Question Diagram"
+                              className="max-h-52 object-contain rounded-xl"
+                            />
+                          </div>
+                        )}
+
+                        {/* Options Input (MCQ) */}
+                        {questions[session.activeQuestionIndex].type === 'mcq' && (
+                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2">
+                            {questions[session.activeQuestionIndex].options.map((opt, oIdx) => {
+                              const isSelected = studentAnswer === oIdx;
+                              return (
+                                <button
+                                  key={oIdx}
+                                  disabled={studentSubmitted || session.questionState !== 'active'}
+                                  onClick={() => handleStudentSubmit(oIdx)}
+                                  className={`p-4 rounded-2xl border text-left font-medium transition flex items-center justify-between text-xs ${
+                                    isSelected
+                                      ? 'bg-emerald-600 text-white border-emerald-400 shadow-xl'
+                                      : 'bg-slate-950 hover:bg-slate-800 text-slate-200 border-slate-800'
+                                  } ${studentSubmitted && !isSelected ? 'opacity-40' : ''}`}
+                                >
+                                  <div className="flex items-center gap-3">
+                                    <span className="w-7 h-7 rounded-full bg-slate-800 text-slate-200 text-xs font-bold flex items-center justify-center">
+                                      {String.fromCharCode(65 + oIdx)}
+                                    </span>
+                                    <span>{opt}</span>
+                                  </div>
+                                  {isSelected && <i data-lucide="check-circle-2" className="w-5 h-5 text-white"></i>}
+                                </button>
+                              );
+                            })}
+                          </div>
+                        )}
+
+                        {/* Subjective Input */}
+                        {questions[session.activeQuestionIndex].type === 'subjective' && (
+                          <div className="space-y-3">
+                            <textarea
+                              rows={4}
+                              disabled={studentSubmitted || session.questionState !== 'active'}
+                              placeholder="Type your biological explanation here..."
+                              value={studentAnswer}
+                              onChange={(e) => setStudentAnswer(e.target.value)}
+                              className="w-full bg-slate-950 border border-slate-800 rounded-2xl p-3 text-xs text-slate-100 placeholder-slate-500 focus:outline-none focus:border-emerald-500"
+                            />
+                            <button
+                              disabled={studentSubmitted || !studentAnswer.trim() || session.questionState !== 'active'}
+                              onClick={() => handleStudentSubmit(studentAnswer)}
+                              className="w-full bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 text-white font-bold py-3 rounded-2xl transition text-xs shadow-lg"
+                            >
+                              {studentSubmitted ? 'Answer Submitted!' : 'Submit Biological Answer'}
+                            </button>
+                          </div>
+                        )}
+
+                        {/* Feedback Banner */}
+                        {studentFeedback && (
+                          <div className={`p-4 rounded-2xl border flex items-center justify-between ${
+                            studentFeedback.isCorrect ? 'bg-emerald-950/90 border-emerald-500/80 text-emerald-200' : 'bg-rose-950/90 border-rose-500/80 text-rose-200'
+                          }`}>
+                            <div className="flex items-center gap-3">
+                              <i data-lucide={studentFeedback.isCorrect ? 'check-circle' : 'x-circle'} className="w-6 h-6"></i>
+                              <div>
+                                <div className="font-bold text-xs">{studentFeedback.message}</div>
+                                <div className="text-[11px] opacity-80 mt-0.5">Your Current Competition Rank: #{studentFeedback.rank}</div>
+                              </div>
+                            </div>
+                          </div>
+                        )}
+
+                      </div>
+                    ) : (
+                      <div className="py-16 text-center text-slate-400 space-y-3">
+                        <i data-lucide="sparkles" className="w-10 h-10 text-emerald-400 mx-auto animate-pulse"></i>
+                        <p className="text-sm font-semibold text-slate-200">Waiting for Soumendra Sir to broadcast the question...</p>
+                        <p className="text-xs text-slate-500">Get ready! Live questions with diagrams will automatically appear here.</p>
+                      </div>
+                    )}
+
+                    {/* Live Leaderboard for Student */}
+                    <div className="pt-6 border-t border-slate-800 space-y-3">
+                      <h4 className="font-bold text-slate-200 text-xs uppercase tracking-wider flex items-center gap-2">
+                        <i data-lucide="trophy" className="w-4 h-4 text-amber-400"></i>
+                        <span>Live Class Competition Ranks</span>
+                      </h4>
+                      <div className="space-y-1.5 custom-scrollbar max-h-48 overflow-y-auto pr-1">
+                        {sortedLeaderboard.slice(0, 10).map((st, rankIdx) => (
+                          <div
+                            key={st.id}
+                            className={`p-2.5 rounded-xl border flex items-center justify-between text-xs ${
+                              st.id === studentProfile.id || st.isCurrentUser ? 'bg-emerald-950/60 border-emerald-500 font-bold' : 'bg-slate-950 border-slate-800'
+                            }`}
+                          >
+                            <div className="flex items-center gap-2.5">
+                              <span className="font-mono text-slate-400 text-xs">#{rankIdx + 1}</span>
+                              <span>{st.avatar}</span>
+                              <span className="text-slate-100">{st.name}</span>
+                              {(st.id === studentProfile.id || st.isCurrentUser) && (
+                                <span className="bg-emerald-600 text-white text-[9px] px-2 py-0.5 rounded-full font-extrabold">YOU</span>
+                              )}
+                            </div>
+                            <span className="font-mono font-bold text-emerald-400">{st.score} pts</span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+
+                  </div>
+                )}
+              </div>
+            )}
+
+          </main>
+        </div>
+      );
+    }
+
+    // Render App
+    const root = ReactDOM.createRoot(document.getElementById('root'));
+    root.render(<App />);
+  </script>
+</body>
+</html>
